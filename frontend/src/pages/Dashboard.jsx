@@ -9,209 +9,273 @@ const Dashboard = () => {
   const [creating, setCreating] = useState(false);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState("all"); // all | completed | pending
+  const [filter, setFilter] = useState("all");
+  const [editingTaskId, setEditingTaskId] = useState(null);
+  const [editingTitle, setEditingTitle] = useState("");
+  const [stats, setStats] = useState({ total: 0, completed: 0 });
 
 
   const fetchTasks = async (url = "tasks/") => {
-    try {
-      setLoading(true);
-      const response = await API.get(url);
+  try {
+    setLoading(true);
 
-      if (Array.isArray(response.data)) {
-        setTasks(response.data);
-        setNextPage(null);
-        setPrevPage(null);
-      } else {
-        setTasks(response.data.results);
-        setNextPage(response.data.next);
-        setPrevPage(response.data.previous);
-      }
-    } catch (error) {
-      console.error("Failed to fetch tasks", error);
-    } finally {
-      setLoading(false);
+    let queryUrl = url;
+
+    // only add params when calling base endpoint
+    if (url === "tasks/") {
+      const params = new URLSearchParams();
+
+      if (search) params.append("search", search);
+      if (filter !== "all") params.append("status", filter);
+
+      queryUrl = `tasks/?${params.toString()}`;
     }
-  };
-  const handleCreateTask = async (e) => {
-  e.preventDefault();
+    const response = await API.get(url);
 
-  if (!title.trim()) return;
-
-  try {
-    setCreating(true);
-    await API.post("tasks/", { title });
-    setTitle("");
-    fetchTasks(); // refresh list
+    setTasks(response.data.results.tasks);
+    setStats(response.data.results.stats);
+    setNextPage(response.data.next);
+    setPrevPage(response.data.previous);
+    
   } catch (error) {
-    console.error("Failed to create task", error);
+    console.error("Failed to fetch tasks", error);
   } finally {
-    setCreating(false);
+    setLoading(false);
   }
 };
-const toggleTaskStatus = async (task) => {
-  try {
-    await API.patch(`tasks/${task.id}/`, {
-      completed: !task.completed,
-    });
-    fetchTasks(); // refresh tasks
-  } catch (error) {
-    console.error("Failed to update task", error);
-  }
-};
-const deleteTask = async (id) => {
-  const confirmDelete = window.confirm("Delete this task?");
-  if (!confirmDelete) return;
-
-  try {
-    await API.delete(`tasks/${id}/`);
-    fetchTasks(); // refresh list
-  } catch (error) {
-    console.error("Failed to delete task", error);
-  }
-};
-const totalTasks = tasks.length;
-const completedTasks = tasks.filter(t => t.completed).length;
-
-const progressPercent = totalTasks === 0
-  ? 0
-  : Math.round((completedTasks / totalTasks) * 100);
-
-
-
 
 
   useEffect(() => {
     fetchTasks();
-  }, []);
+  }, [search,filter]);
+
+  const handleCreateTask = async (e) => {
+    e.preventDefault();
+    if (!title.trim()) return;
+
+    try {
+      setCreating(true);
+      await API.post("tasks/", { title });
+      setTitle("");
+      fetchTasks();
+    } catch (error) {
+      console.error("Failed to create task", error);
+    } finally {
+      setCreating(false);
+    }
+  };
+  const updateTask = async (id) => {
+  if (!editingTitle.trim()) return;
+
+  try {
+      await API.patch(`tasks/${id}/`, {
+        title: editingTitle,
+      });
+      setEditingTaskId(null);
+      setEditingTitle("");
+      fetchTasks();
+    } catch (error) {
+      console.error("Failed to update task", error);
+    }
+  };
+
+
+  const toggleTaskStatus = async (task) => {
+    await API.patch(`tasks/${task.id}/`, {
+      completed: !task.completed,
+    });
+    fetchTasks();
+  };
+
+  const deleteTask = async (id) => {
+    if (!window.confirm("Delete this task?")) return;
+    await API.delete(`tasks/${id}/`);
+    fetchTasks();
+  };
 
   const handleLogout = () => {
     localStorage.clear();
     window.location.href = "/login";
   };
-  const filteredTasks = tasks.filter((task) => {
-  const matchesSearch = task.title
-    .toLowerCase()
-    .includes(search.toLowerCase());
 
-  if (filter === "completed") {
-    return task.completed && matchesSearch;
-  }
+ 
 
-  if (filter === "pending") {
-    return !task.completed && matchesSearch;
-  }
-
-  return matchesSearch; // all
-});
-
+  const completedTasks = tasks.filter(t => t.completed).length;
+  const progressPercent =
+    stats.total === 0
+      ? 0
+      : Math.round((stats.completed / stats.total) * 100);
 
   return (
-   <div style={styles.container}>
+    <div className="container py-4">
       
+      {/* Header */}
+      <div className="d-flex justify-content-between align-items-center mb-4">
+        <h3 className="mb-0">Task Manager</h3>
+        <button className="btn btn-outline-danger btn-sm" onClick={handleLogout}>
+          Logout
+        </button>
+      </div>
 
-      <div style={styles.card}>
-        <header style={styles.header}>
-        <h2>Task Manager</h2>
-        <button onClick={handleLogout}>Logout</button>
-      </header>
-        <h3>My Tasks</h3>
-        <div style={styles.progressContainer}>
-          <div style={styles.progressInfo}>
-            <span>{completedTasks} / {totalTasks} completed</span>
-            <span>{progressPercent}%</span>
+      {/* Card */}
+      <div className="card shadow-sm">
+        <div className="card-body">
+
+          {/* Progress */}
+          <div className="mb-3">
+            <div className="d-flex justify-content-between mb-1">
+              <small>{stats.completed} / {stats.total} completed</small>
+              <small>{progressPercent}%</small>
+            </div>
+            <div className="progress">
+              <div
+                className="progress-bar bg-success"
+                style={{ width: `${progressPercent}%` }}
+              />
+            </div>
           </div>
 
-          <div style={styles.progressBar}>
-            <div
-              style={{
-                ...styles.progressFill,
-                width: `${progressPercent}%`,
-              }}
-            />
-          </div>
-        </div>
-        {loading && <p>Loading...</p>}
-        {!loading && tasks.length === 0 && <p>No tasks found</p>}
-        <div style={styles.filterBar}>
-          <input
-            type="text"
-            placeholder="Search tasks..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            style={styles.searchInput}
-          />
-
-          <select
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-          >
-            <option value="all">All</option>
-            <option value="completed">Completed</option>
-            <option value="pending">Pending</option>
-          </select>
-        </div>
-        <form onSubmit={handleCreateTask} style={styles.form}>
-          <input
-            type="text"
-            placeholder="Enter new task..."
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            style={styles.input}
-          />
-          <button type="submit" disabled={creating}>
-            {creating ? "Adding..." : "Add"}
-          </button>
-        </form>
-
-        <ul style={styles.list}>
-          {filteredTasks.map((task) => (
-            <li key={task.id} style={styles.task}>
-              <span
-                style={{
-                  textDecoration: task.completed ? "line-through" : "none",
-                  cursor: "pointer",
-                }}
-                onClick={() => toggleTaskStatus(task)}
+          {/* Search + Filter */}
+          <div className="row g-2 mb-3">
+            <div className="col-md-8">
+              <input
+                type="text"
+                className="form-control"
+                placeholder="Search tasks..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+            <div className="col-md-4">
+              <select
+                className="form-select"
+                value={filter}
+                onChange={(e) => setFilter(e.target.value)}
               >
-                {task.title}
-              </span>
-              
-              <div style={{ display: "flex", gap: "6px" }}>
-                <button
-                  onClick={() => toggleTaskStatus(task)}
-                  style={{
-                    ...styles.statusBtn,
-                    background: task.completed ? "#9e9e9e" : "#4caf50",
-                  }}
-                >
-                  {task.completed ? "Undo" : "Complete"}
-                </button>
-              
-                          
-                <button
-                  onClick={() => deleteTask(task.id)}
-                  style={styles.deleteBtn}
-                >
-                  Delete
-                </button>
-              </div>
-                          
+                <option value="all">All</option>
+                <option value="completed">Completed</option>
+                <option value="pending">Pending</option>
+              </select>
+            </div>
+          </div>
 
-            </li>
-          ))}
-        </ul>
+          {/* Create Task */}
+          <form onSubmit={handleCreateTask} className="d-flex gap-2 mb-3">
+            <input
+              type="text"
+              className="form-control"
+              placeholder="Enter new task"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+            />
+            <button className="btn btn-primary" disabled={creating}>
+              {creating ? "Adding..." : "Add"}
+            </button>
+          </form>
 
-        <div style={styles.pagination}>
-          {prevPage && (
-            <button onClick={() => fetchTasks(prevPage)}>
-              Previous
-            </button>
+          {/* Task List */}
+          {loading && <p className="text-center">Loading...</p>}
+          {!loading && tasks.length === 0 && (
+            <p className="text-center text-muted">No tasks found</p>
           )}
-          {nextPage && (
-            <button onClick={() => fetchTasks(nextPage)}>
-              Next
-            </button>
-          )}
+
+          <ul className="list-group">
+            {tasks.map((task) => (
+              <li
+                key={task.id}
+                className="list-group-item d-flex justify-content-between align-items-center"
+              >
+                {/* LEFT SIDE */}
+                {editingTaskId === task.id ? (
+                  <input
+                    type="text"
+                    className="form-control me-2"
+                    value={editingTitle}
+                    onChange={(e) => setEditingTitle(e.target.value)}
+                  />
+                ) : (
+                  <span
+                    style={{
+                      cursor: "pointer",
+                      textDecoration: task.completed ? "line-through" : "none",
+                    }}
+                    onClick={() => toggleTaskStatus(task)}
+                  >
+                    {task.title}
+                  </span>
+                )}
+
+                {/* RIGHT SIDE BUTTONS */}
+                <div className="btn-group btn-group-sm ms-2">
+                  {editingTaskId === task.id ? (
+                    <>
+                      <button
+                        className="btn btn-success"
+                        onClick={() => updateTask(task.id)}
+                      >
+                        Save
+                      </button>
+                      <button
+                        className="btn btn-secondary"
+                        onClick={() => setEditingTaskId(null)}
+                      >
+                        Cancel
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        className="btn btn-warning"
+                        onClick={() => {
+                          setEditingTaskId(task.id);
+                          setEditingTitle(task.title);
+                        }}
+                      >
+                        Update
+                      </button>
+                      
+                      <button
+                        className={`btn ${
+                          task.completed ? "btn-secondary" : "btn-success"
+                        }`}
+                        onClick={() => toggleTaskStatus(task)}
+                      >
+                        {task.completed ? "Undo" : "Complete"}
+                      </button>
+                      
+                      <button
+                        className="btn btn-danger"
+                        onClick={() => deleteTask(task.id)}
+                      >
+                        Delete
+                      </button>
+                    </>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
+
+          {/* Pagination */}
+          <div className="d-flex justify-content-between mt-3">
+            {prevPage && (
+              <button
+                className="btn btn-outline-primary btn-sm"
+                onClick={() => fetchTasks(prevPage)}
+              >
+                Previous
+              </button>
+            )}
+            {nextPage && (
+              <button
+                className="btn btn-outline-primary btn-sm ms-auto"
+                onClick={() => fetchTasks(nextPage)}
+              >
+                Next
+              </button>
+            )}
+          </div>
+
         </div>
       </div>
     </div>
@@ -220,118 +284,4 @@ const progressPercent = totalTasks === 0
 
 export default Dashboard;
 
-// ⚠️ MUST BE OUTSIDE THE COMPONENT
-const styles = {
- container: {
-  minHeight: "100vh",
-  display: "flex",
-  justifyContent: "center",
-  alignItems: "center",
-  background: "#f4f6f8",
-},
-
-  header: {
-  width: "100%",
-  maxWidth: "600px",
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  marginBottom: "20px",
-},
-
-card: {
-  width: "420px",
-  background: "#fff",
-  padding: "20px",
-  borderRadius: "12px",
-  boxShadow: "0 10px 30px rgba(0,0,0,0.1)",
-},
-
-
-  list: {
-    listStyle: "none",
-    padding: 0,
-  },
-  task: {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  padding: "12px 8px",
-  borderBottom: "1px solid #f0f0f0",
-},
-  pagination: {
-    marginTop: "15px",
-    display: "flex",
-    justifyContent: "space-between",
-  },
-  form: {
-  display: "flex",
-  gap: "10px",
-  marginBottom: "15px",
-},
-input: {
-  flex: 1,
-  padding: "10px",
-  borderRadius: "6px",
-  border: "1px solid #ddd",
-  fontSize: "14px",
-},
-
-statusBtn: {
-  padding: "6px 10px",
-  fontSize: "12px",
-  cursor: "pointer",
-  borderRadius: "6px",
-  border: "none",
-  background: "#4caf50",
-  color: "#fff",
-},
-filterBar: {
-  display: "flex",
-  gap: "10px",
-  marginBottom: "15px",
-},
-searchInput: {
-  flex: 1,
-  padding: "10px",
-  borderRadius: "6px",
-  border: "1px solid #ddd",
-  fontSize: "14px",
-},
-
-progressContainer: {
-  marginBottom: "15px",
-},
-progressInfo: {
-  display: "flex",
-  justifyContent: "space-between",
-  fontSize: "14px",
-  marginBottom: "5px",
-},
-progressBar: {
-  height: "8px",
-  background: "#e0e0e0",
-  borderRadius: "4px",
-  overflow: "hidden",
-},
-progressFill: {
-  height: "100%",
-  background: "#4caf50",
-  transition: "width 0.3s ease",
-},
-deleteBtn: {
-  padding: "6px 10px",
-  fontSize: "12px",
-  cursor: "pointer",
-  background: "#f44336",
-  color: "#fff",
-  border: "none",
-  borderRadius: "6px",
-},
-
-
-
-
-
-};
 

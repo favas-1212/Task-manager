@@ -21,36 +21,54 @@ const Login = () => {
   };
 
   return (
-    <div style={{ maxWidth: "400px", margin: "100px auto" }}>
-      <h2>Login</h2>
+    <div className="container-fluid vh-100 d-flex justify-content-center align-items-center bg-light">
+      <div className="card shadow p-4" style={{ maxWidth: "400px", width: "100%" }}>
+        
+        <h3 className="text-center mb-3">Login</h3>
 
-      {error && <p style={{ color: "red" }}>{error}</p>}
+        {error && (
+          <div className="alert alert-danger text-center">
+            {error}
+          </div>
+        )}
 
-      <form onSubmit={handleSubmit}>
-        <input
-          type="text"
-          placeholder="Username"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-          required
-        />
-        <br /><br />
+        <form onSubmit={handleSubmit}>
+          <div className="mb-3">
+            <label className="form-label">Username</label>
+            <input
+              type="text"
+              className="form-control"
+              placeholder="Enter username"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              required
+            />
+          </div>
 
-        <input
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-        />
-        <br /><br />
+          <div className="mb-3">
+            <label className="form-label">Password</label>
+            <input
+              type="password"
+              className="form-control"
+              placeholder="Enter password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+          </div>
 
-        <button type="submit">Login</button>
-      </form>
+          <button type="submit" className="btn btn-primary w-100">
+            Login
+          </button>
+        </form>
 
-      <p>
-        Don’t have an account? <Link to="/register">Register</Link>
-      </p>
+        <p className="text-center mt-3 mb-0">
+          Don't have an account?{" "}
+          <Link to="/register" className="text-decoration-none">
+            Register
+          </Link>
+        </p>
+      </div>
     </div>
   );
 };
