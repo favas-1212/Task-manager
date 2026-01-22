@@ -30,7 +30,7 @@ const Dashboard = () => {
 
       queryUrl = `tasks/?${params.toString()}`;
     }
-    const response = await API.get(url);
+    const response = await API.get(queryUrl);
 
     setTasks(response.data.results.tasks);
     setStats(response.data.results.stats);

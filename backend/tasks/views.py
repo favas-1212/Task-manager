@@ -21,7 +21,7 @@ class TaskViewSet(viewsets.ModelViewSet):
         return queryset
 
     def list(self, request, *args, **kwargs):
-        queryset = self.get_queryset()
+        queryset = self.filter_queryset(self.get_queryset())
 
         total = queryset.count()
         completed = queryset.filter(completed=True).count()
