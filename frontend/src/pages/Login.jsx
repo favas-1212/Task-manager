@@ -6,17 +6,21 @@ const Login = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-
+  const[loading,setLoading]=useState(false);
   const { login } = useContext(AuthContext);
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
+    setError("");
     try {
       await login(username, password);
       navigate("/");
-    } catch (err) {
+    } catch {
       setError("Invalid credentials");
+    } finally{
+      setLoading(false);
     }
   };
 
@@ -57,9 +61,10 @@ const Login = () => {
             />
           </div>
 
-          <button type="submit" className="btn btn-primary w-100">
-            Login
+          <button className="btn btn-primary w-100" disabled={loading}>
+            {loading ? "Logging in..." : "Login"}
           </button>
+
         </form>
 
         <p className="text-center mt-3 mb-0">
