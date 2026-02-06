@@ -111,7 +111,7 @@ const Dashboard = () => {
       
       {/* Header */}
       <div className="d-flex justify-content-between align-items-center mb-4">
-        <h3 className="mb-0">Task Manager</h3>
+        <h3 className="mb-0">allTask Manager</h3>
         <button className="btn btn-outline-danger btn-sm" onClick={handleLogout}>
           Logout
         </button>
